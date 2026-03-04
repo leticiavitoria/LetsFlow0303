@@ -1335,7 +1335,7 @@
             }
 
             _maxSimultaneous = state.maxSimultaneous || 3;
-            _downloadFolder = state.folder || 'DottiVideos';
+            _downloadFolder = state.folder || 'LetzVideos';
             _mediaType = state.mediaType || 'video';
             _autoDownload = state.autoDownload !== false;
 
@@ -1376,7 +1376,7 @@
 
     const _mediaTracker = new Map(); // mediaId -> { prompt, promptNumber, status, operationName }
     let _promptList = [];
-    let _downloadFolder = 'DottiVideos';
+    let _downloadFolder = 'LetzVideos';
     let _mediaType = 'video';
     let _autoDownload = true;
     const _downloadedVideoUrls = new Set();
@@ -1801,7 +1801,7 @@
             imageDataUrl: p.imageDataUrl || null,  // v3.4.0: Frame image data URL
             imageName: p.imageName || null          // v3.4.0: Frame image filename
         }));
-        _downloadFolder = folder || 'DottiVideos';
+        _downloadFolder = folder || 'LetzVideos';
         _mediaType = mediaType || 'video';
         _autoDownload = autoDownload !== false;
 
@@ -4002,7 +4002,7 @@
                         }
 
                         _maxSimultaneous = state.maxSimultaneous || 3;
-                        _downloadFolder = state.folder || 'DottiVideos';
+                        _downloadFolder = state.folder || 'LetzVideos';
                         _mediaType = state.mediaType || 'video';
                         _autoDownload = state.autoDownload !== false;
 
@@ -4214,7 +4214,7 @@
                 // Receber prompt list do panel para matching no scanner
                 setPromptList(
                     data.prompts,
-                    data.folder || 'DottiVideos',
+                    data.folder || 'LetzVideos',
                     data.mediaType || 'video',
                     data.autoDownload !== false
                 );
