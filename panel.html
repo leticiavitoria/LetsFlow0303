@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Letz Sender</title>
+  <title>Lets Automate</title>
   <link rel="stylesheet" href="panel.css">
 </head>
 <body>
@@ -74,11 +74,11 @@
 
         <div class="card" id="videoInputSection">
           <div class="card-title">Prompts de video</div>
-          <textarea id="videoPromptsInput" placeholder="PROMPT 1 [1]: Descricao do primeiro video com elemento 1...
+          <textarea id="videoPromptsInput" placeholder="PROMPT 1 [1] {6s}: Descricao do primeiro video com elemento 1 e duracao 6s...
 
-PROMPT 2 [1, 2]: Descricao com elementos 1 e 2...
+PROMPT 2 [1, 2] {4s}: Descricao com elementos 1 e 2 e duracao 4s...
 
-PROMPT 3: Descricao sem elementos (so texto)..."></textarea>
+PROMPT 3: Descricao sem elementos (default 8s)..."></textarea>
         </div>
 
         <div class="card hidden" id="videoPromptListCard">
@@ -107,8 +107,9 @@ PROMPT 3: Descricao sem elementos (so texto)..."></textarea>
         <button id="videoCancelAllBtn" class="btn btn-cancel-all hidden">Cancelar Tudo</button>
 
         <div class="info-box" id="videoFormatInfo">
-          <strong>Formato:</strong> <code>PROMPT 1 [1, 2]: texto...</code><br>
+          <strong>Formato:</strong> <code>PROMPT 1 [1, 2] {6s}: texto...</code><br>
           <code>[1]</code> = 1a imagem, <code>[2]</code> = 2a imagem<br>
+          <code>{4s}</code>, <code>{6s}</code> ou <code>{8s}</code> = duracao do video (default 8s)<br>
           Sem <code>[ ]</code> = modo texto simples
         </div>
 
@@ -151,11 +152,11 @@ PROMPT 3: Descricao sem elementos (so texto)..."></textarea>
         <div class="card" id="frameInputSection">
           <div class="card-title">Prompts com frame inicial</div>
           <p class="card-description">Cada PROMPT N usa automaticamente a IMAGEM N como frame inicial do video.</p>
-          <textarea id="framePromptsInput" placeholder="PROMPT 1: Camera avanca lentamente pela floresta...
+          <textarea id="framePromptsInput" placeholder="PROMPT 1 {6s}: Camera avanca lentamente pela floresta...
 
-PROMPT 2: O personagem se levanta e olha para o horizonte...
+PROMPT 2 {4s}: O personagem se levanta e olha para o horizonte...
 
-PROMPT 3: Vista aerea da cidade ao entardecer..."></textarea>
+PROMPT 3: Vista aerea da cidade ao entardecer (default 8s)..."></textarea>
 
           <div class="card-title" style="margin-top: 12px;">Imagens (frames iniciais)</div>
           <div id="frameImagesContainer" class="frame-images-container">
@@ -169,7 +170,8 @@ PROMPT 3: Vista aerea da cidade ao entardecer..."></textarea>
             PROMPT 1 &#8594; Imagem 1 (frame inicial)<br>
             PROMPT 2 &#8594; Imagem 2 (frame inicial)<br>
             PROMPT 3 &#8594; Imagem 3 (frame inicial)<br>
-            A numeracao do prompt corresponde a ordem das imagens.
+            A numeracao do prompt corresponde a ordem das imagens.<br>
+            <code>{4s}</code>, <code>{6s}</code> ou <code>{8s}</code> = duracao do video (default 8s)
           </div>
         </div>
 
@@ -302,7 +304,7 @@ PROMPT 3: Descricao sem referencias (so texto)..."></textarea>
   </div>
 
   <div class="footer">
-    <span>Letz Sender v3.0.0</span>
+    <span>Lets Automate v3.0.0</span>
   </div>
 
   <script src="panel.js"></script>

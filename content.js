@@ -909,8 +909,7 @@
         header.innerHTML = `
             <div class="dotti-panel-title">
                 <span class="dotti-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13 2L4 14H11L10 22L19 10H12L13 2Z" fill="#FFD700" stroke="#FFD700" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-                <span>Dotti Sender</span>
-                <span class="dotti-badge">FULL</span>
+                <span>Lets Automate</span>
             </div>
             <div class="dotti-panel-actions">
                 <button class="dotti-btn-minimize" title="Minimizar">&minus;</button>
@@ -1611,9 +1610,9 @@
                 }
                 if (!hasFailedText) continue;
 
-                // Protecao: porcentagem = ainda gerando, video = pronto
+                // Protecao: porcentagem = ainda gerando.
+                // Video presente NAO descarta mais (Veo 3 mostra placeholder em tiles Failed).
                 let hasPercentage = false;
-                let hasVideo = !!item.querySelector('video[src*="getMediaUrlRedirect"]');
                 const pWalker = document.createTreeWalker(item, NodeFilter.SHOW_TEXT);
                 let pNode;
                 while (pNode = pWalker.nextNode()) {
@@ -1622,7 +1621,7 @@
                         break;
                     }
                 }
-                if (hasPercentage || hasVideo) continue;
+                if (hasPercentage) continue;
 
                 // Protecao temporal: 45s desde ultimo envio
                 const timeSinceLastSubmit = Date.now() - (_lastSubmittedTime || 0);
@@ -2688,6 +2687,22 @@
             if (_downloadedVideoUrls.has(cleanUrl)) continue;
             if (seenVideoIds.has(cleanUrl)) continue;
             seenVideoIds.add(cleanUrl);
+
+            // Skip videos cujo tile/item esta marcado como Failed (placeholder/preview de geracao falha)
+            const itemEl = video.closest('[data-item-index]');
+            if (itemEl) {
+                let isFailed = false;
+                const fWalker = document.createTreeWalker(itemEl, NodeFilter.SHOW_TEXT);
+                let fNode;
+                while (fNode = fWalker.nextNode()) {
+                    const t = fNode.textContent.trim();
+                    if (t === 'Failed' || t === 'Failed Generation') { isFailed = true; break; }
+                }
+                if (isFailed) {
+                    console.log('[Dotti Scanner] Ignorando video de tile Failed:', cleanUrl.substring(0, 60));
+                    continue;
+                }
+            }
 
             // Tile container
             const tileEl = video.closest('[data-tile-id]');
@@ -4142,7 +4157,7 @@
                         document.head.appendChild(link);
                     }
                     link.href = message.iconUrl || "";
-                    document.title = "Dotti Sender FULL";
+                    document.title = "Lets Automate";
                     // Esconder sidebar e toggle
                     const sidebar = document.getElementById(PANEL_ID);
                     if (sidebar) sidebar.style.display = "none";
@@ -4433,7 +4448,7 @@
             toggleBtn = document.createElement("div");
             toggleBtn.id = TOGGLE_BTN_ID;
             toggleBtn.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M13 2L4 14H11L10 22L19 10H12L13 2Z" fill="#FFD700" stroke="#FFD700" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-            toggleBtn.title = "Dotti Sender FULL";
+            toggleBtn.title = "Lets Automate";
             toggleBtn.addEventListener("click", togglePanel);
             document.body.appendChild(toggleBtn);
         }
@@ -4475,7 +4490,7 @@
             }
         }, 3000);
 
-        console.log("[Dotti Sender FULL] v3.0.0 ready");
+        console.log("[Lets Automate] v3.0.0 ready");
     }
 
     if (document.readyState === "loading") {
