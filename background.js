@@ -174,10 +174,10 @@ async function injectStatusOverlay() {
                     document.head.appendChild(link);
                 }
                 link.href = iconUrl;
-                document.title = "Dotti Sender FULL";
+                document.title = "Lets Automate";
                 const o = document.createElement("div");
                 o.id = "dotti-status-overlay";
-                o.innerHTML = '<style>#dotti-status-overlay{position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;width:100%!important;height:100%!important;margin:0!important;padding:20px!important;box-sizing:border-box!important;background:linear-gradient(135deg,#1a1a2e,#16213e)!important;z-index:999999!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;font-family:Segoe UI,Arial,sans-serif!important;color:#fff!important;pointer-events:none!important;transform:none!important;contain:none!important}#dotti-status-overlay .logo{font-size:64px!important;margin-bottom:20px!important}#dotti-status-overlay .title{font-size:28px!important;font-weight:700!important;margin-bottom:12px!important;background:linear-gradient(90deg,#00d4ff,#7b2cbf)!important;-webkit-background-clip:text!important;-webkit-text-fill-color:transparent!important}#dotti-status-overlay .status{font-size:16px!important;color:#a0a0a0!important;margin-bottom:24px!important}#dotti-status-overlay .pbar{width:80%!important;max-width:400px!important;height:8px!important;background:#2a2a4a!important;border-radius:4px!important;overflow:hidden!important;margin-bottom:20px!important}#dotti-status-overlay .pfill{height:100%!important;background:linear-gradient(90deg,#00d4ff,#7b2cbf)!important;border-radius:4px!important;transition:width .3s!important;width:0}#dotti-status-overlay .count{font-size:36px!important;font-weight:700!important;color:#00d4ff!important}#dotti-status-overlay .label{font-size:14px!important;color:#666!important;margin-top:8px!important}</style><div class="logo">&#9889;</div><div class="title">DOTTI SENDER FULL</div><div class="status" id="dso-status">Preparando...</div><div class="pbar"><div class="pfill" id="dso-progress"></div></div><div class="count" id="dso-count">0/0</div><div class="label">prompts enviados</div>';
+                o.innerHTML = '<style>#dotti-status-overlay{position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;width:100%!important;height:100%!important;margin:0!important;padding:20px!important;box-sizing:border-box!important;background:linear-gradient(135deg,#1a1a2e,#16213e)!important;z-index:999999!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;font-family:Segoe UI,Arial,sans-serif!important;color:#fff!important;pointer-events:none!important;transform:none!important;contain:none!important}#dotti-status-overlay .logo{font-size:64px!important;margin-bottom:20px!important}#dotti-status-overlay .title{font-size:28px!important;font-weight:700!important;margin-bottom:12px!important;background:linear-gradient(90deg,#00d4ff,#7b2cbf)!important;-webkit-background-clip:text!important;-webkit-text-fill-color:transparent!important}#dotti-status-overlay .status{font-size:16px!important;color:#a0a0a0!important;margin-bottom:24px!important}#dotti-status-overlay .pbar{width:80%!important;max-width:400px!important;height:8px!important;background:#2a2a4a!important;border-radius:4px!important;overflow:hidden!important;margin-bottom:20px!important}#dotti-status-overlay .pfill{height:100%!important;background:linear-gradient(90deg,#00d4ff,#7b2cbf)!important;border-radius:4px!important;transition:width .3s!important;width:0}#dotti-status-overlay .count{font-size:36px!important;font-weight:700!important;color:#00d4ff!important}#dotti-status-overlay .label{font-size:14px!important;color:#666!important;margin-top:8px!important}</style><div class="logo">&#9889;</div><div class="title">LETS AUTOMATE</div><div class="status" id="dso-status">Preparando...</div><div class="pbar"><div class="pfill" id="dso-progress"></div></div><div class="count" id="dso-count">0/0</div><div class="label">prompts enviados</div>';
                 document.body.appendChild(o);
             },
             args: [chrome.runtime.getURL("icons/icon128.png")]
@@ -479,6 +479,39 @@ async function executePromptInTab(prompt, mediaType) {
         const mr = modeResult?.[0]?.result;
         console.log("[Dotti] Step 1b tab click:", JSON.stringify(mr));
         await sleep(1000);
+
+        // Step 1c: selecionar duracao do video (4s/6s/8s) — apenas para video/frame
+        if (mediaType === "video" || mediaType === "frame") {
+            const targetDuration = (prompt.duration === 4 || prompt.duration === 6 || prompt.duration === 8) ? prompt.duration : 8;
+            const durResult = await chrome.scripting.executeScript({
+                target: { tabId: targetTabId },
+                world: "MAIN",
+                func: (durSec) => {
+                    const wanted = durSec + "s";
+                    const candidates = document.querySelectorAll('button, [role="button"], [role="tab"], [role="option"], [role="radio"]');
+                    let target = null;
+                    for (const el of candidates) {
+                        if (el.offsetParent === null) continue;
+                        const txt = (el.textContent || "").trim().toLowerCase();
+                        if (txt === wanted) { target = el; break; }
+                    }
+                    if (!target) {
+                        const labels = ["4s", "6s", "8s"];
+                        for (const el of candidates) {
+                            if (el.offsetParent === null) continue;
+                            const txt = (el.textContent || "").trim().toLowerCase();
+                            if (labels.includes(txt) && txt === wanted) { target = el; break; }
+                        }
+                    }
+                    if (!target) return { clicked: false, wanted: wanted };
+                    window.__dottiClick(target);
+                    return { clicked: true, wanted: wanted };
+                },
+                args: [targetDuration]
+            });
+            console.log("[Dotti] Step 1c duration:", JSON.stringify(durResult?.[0]?.result));
+            await sleep(600);
+        }
 
         // Fechar seletor clicando no textbox
         await chrome.scripting.executeScript({

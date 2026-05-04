@@ -155,7 +155,7 @@ async function init() {
     } catch (e) {
         console.error("[Panel] Init error:", e);
         document.body.innerHTML = '<div style="padding:20px;color:#fff;background:#111;font-family:sans-serif;">' +
-            '<h3 style="color:#FF571C;">Letz Sender v3.0.0</h3>' +
+            '<h3 style="color:#FF571C;">Lets Automate v3.0.0</h3>' +
             '<p style="color:#888;">Erro ao inicializar. Recarregue a pagina.</p>' +
             '<p style="color:#666;font-size:12px;">' + (e.message || 'Erro desconhecido') + '</p></div>';
     }
@@ -1290,7 +1290,7 @@ async function recoverBackgroundState() {
             const allPrompts = [...(state.processedPrompts || []), ...(state.promptQueue || [])];
             if (allPrompts.length > 0) {
                 tabState[tab].prompts = allPrompts.map(p => ({
-                    number: p.number, elements: p.elements || [], text: p.text,
+                    number: p.number, elements: p.elements || [], duration: p.duration || 8, text: p.text,
                     status: p.status || "waiting",
                     mediaStatus: p.mediaStatus || p.videoStatus || "pending",
                     mediaUrl: p.mediaUrl || p.videoUrl || null,
@@ -1337,7 +1337,7 @@ async function recoverBackgroundState() {
             }
         } else if (state.processedPrompts?.length > 0 && state.promptQueue?.length === 0) {
             tabState[tab].prompts = state.processedPrompts.map(p => ({
-                number: p.number, elements: p.elements || [], text: p.text,
+                number: p.number, elements: p.elements || [], duration: p.duration || 8, text: p.text,
                 status: p.status || "sent",
                 mediaStatus: p.mediaStatus || p.videoStatus || "pending",
                 mediaUrl: p.mediaUrl || p.videoUrl || null,
@@ -1482,15 +1482,18 @@ function processPrompts(tab) {
             const num = parseInt(numMatch[1]);
             const elemMatch = trimmed.match(/\[([0-9,\s]+)\]/);
             let elements = elemMatch ? elemMatch[1].split(",").map(e => parseInt(e.trim())).filter(e => !isNaN(e)) : [];
+            const durMatch = trimmed.match(/\{(4|6|8)s\}/i);
+            const duration = durMatch ? parseInt(durMatch[1]) : 8;
             let text = trimmed
                 .replace(/PROMP?T\s*\d+\s*/i, "")
                 .replace(/\[[0-9,\s]+\]\s*/g, "")
+                .replace(/\{(4|6|8)s\}\s*/gi, "")
                 .replace(/\|\s*[\d:]+\s*-\s*[\d:]+\s*/g, "")
                 .replace(/^:\s*/, "")
                 .trim();
             if (text) {
                 st.prompts.push({
-                    number: num, elements, text: "PROMPT " + num + ": " + text,
+                    number: num, elements, duration, text: "PROMPT " + num + ": " + text,
                     status: "waiting", mediaStatus: "pending", mediaUrl: null,
                     detectedUrl: null, mediaId: null
                 });
