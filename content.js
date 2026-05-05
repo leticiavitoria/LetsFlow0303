@@ -177,10 +177,12 @@
 
         console.log("[Dotti DOM] switchMode: _mediaType=" + _mediaType + " mediaTarget=" + mediaTypeTarget + " subMode=" + subMode + " needElements=" + needElements);
 
-        const tabs = findFlowMenuTabs();
+        // v3.5.0: Sempre usar slate-helper (popup) — caminho de "tabs visiveis"
+        // nao consegue setar duracao (4s/6s/8s estao apenas dentro do popup do Veo 3).
+        const tabs = [];
         if (tabs.length === 0) {
             // Tabs nao visiveis — usar MAIN world PointerEvent via slate-helper.js
-            console.log("[Dotti DOM] Menu tabs nao encontrados — abrindo seletor via MAIN world");
+            console.log("[Dotti DOM] Abrindo seletor via MAIN world (sempre, p/ permitir set de duracao)");
 
             const wantDuration = (duration === 4 || duration === 6 || duration === 8) ? duration : 8;
             const result = await requestSlateHelper(

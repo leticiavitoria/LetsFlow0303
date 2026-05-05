@@ -588,13 +588,18 @@
       for (var t = 0; t < targets.length; t++) {
         var targetIcon = targets[t];
         var targetBtn = null;
+        var fallbackBtn = null;
+        // Preferir botoes do popup (data-state active/inactive). Outros videocam/image
+        // que aparecem em sidebar/galeria usam outros estados (closed) e devem ser ignorados.
         for (var j = 0; j < refreshedBtns.length; j++) {
           var ic = refreshedBtns[j].querySelector('i');
           if (ic && ic.textContent.trim() === targetIcon) {
-            targetBtn = refreshedBtns[j];
-            break;
+            var st = refreshedBtns[j].getAttribute('data-state');
+            if (st === 'active' || st === 'inactive') { targetBtn = refreshedBtns[j]; break; }
+            if (!fallbackBtn) fallbackBtn = refreshedBtns[j];
           }
         }
+        if (!targetBtn) targetBtn = fallbackBtn;
 
         if (!targetBtn) {
           clickResults.push({ icon: targetIcon, action: 'not_found' });
