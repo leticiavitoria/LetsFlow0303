@@ -532,6 +532,7 @@
     var mediaType = (e.detail && e.detail.mediaType) || null; // 'image' or 'video'
     var subMode = (e.detail && e.detail.mode) || null;        // 'ingredients' or 'frames'
     var setX1 = !!(e.detail && e.detail.setX1);
+    var duration = (e.detail && e.detail.duration) || null;   // 4 | 6 | 8
 
     // Build list of icons to click
     var targets = [];
@@ -623,6 +624,32 @@
               _pointerClick(btns2[k]);
               break;
             }
+          }
+        }
+
+        // Set video duration (4s / 6s / 8s) — Veo 3 popup
+        if (duration === 4 || duration === 6 || duration === 8) {
+          var wanted = duration + 's';
+          var btns3 = Array.from(document.querySelectorAll('button, [role="button"], [role="radio"], [role="option"], [role="tab"]')).filter(function(b) { return b.offsetParent !== null; });
+          var visible = [];
+          var durTarget = null;
+          for (var d = 0; d < btns3.length; d++) {
+            var dtxt = (btns3[d].textContent || '').replace(/\s+/g, '').toLowerCase();
+            if (dtxt === '4s' || dtxt === '6s' || dtxt === '8s') {
+              visible.push(dtxt);
+              if (dtxt === wanted) durTarget = btns3[d];
+            }
+          }
+          if (durTarget) {
+            var dstate = durTarget.getAttribute('data-state');
+            if (dstate === 'active') {
+              console.log('[DottiSlateHelper] Duration ' + wanted + ' already active');
+            } else {
+              console.log('[DottiSlateHelper] Setting duration ' + wanted + ' (was ' + dstate + ')');
+              _pointerClick(durTarget);
+            }
+          } else {
+            console.log('[DottiSlateHelper] Duration button ' + wanted + ' not found, visible=' + visible.join(','));
           }
         }
 
