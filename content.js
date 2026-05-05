@@ -156,7 +156,7 @@
     // v2.0.2: Garantir modo correto (Ingredients ou Frames) + quantidade x1 no primeiro prompt
     let _firstPromptOfSession = true;
 
-    async function switchMode(needElements) {
+    async function switchMode(needElements, duration) {
         // v3.4.0: Determinar targets baseado em _mediaType
         // Group 1 (mediaType): 'image' → tab image, 'video'/'frame' → tab videocam
         // Group 2 (subMode):   'image' → nenhum, 'video' → frames/ingredients, 'frame' → frames
@@ -182,9 +182,10 @@
             // Tabs nao visiveis — usar MAIN world PointerEvent via slate-helper.js
             console.log("[Dotti DOM] Menu tabs nao encontrados — abrindo seletor via MAIN world");
 
+            const wantDuration = (duration === 4 || duration === 6 || duration === 8) ? duration : 8;
             const result = await requestSlateHelper(
                 'dotti-switch-mode',
-                { mediaType: mediaTypeTarget, mode: subMode, setX1: _firstPromptOfSession },
+                { mediaType: mediaTypeTarget, mode: subMode, setX1: _firstPromptOfSession, duration: wantDuration },
                 'dotti-switch-mode-result',
                 12000
             );
@@ -777,7 +778,7 @@
             await sleep(800);
 
             console.log("[Dotti DOM] Passo 2: Verificando modo...");
-            const modeOk = await switchMode(hasElements);
+            const modeOk = await switchMode(hasElements, prompt.duration);
             if (!modeOk) {
                 console.log("[Dotti DOM] ERRO: Falha ao mudar modo");
                 return { success: false, error: "mode_switch_failed" };
@@ -1773,6 +1774,7 @@
         _promptList = (prompts || []).map((p, i) => ({
             index: i,                        // posicao na taskList (0-based)
             number: p.number,                // numero do prompt (1-based)
+            duration: p.duration || 8,       // duracao do video em segundos (4/6/8)
             text: p.text || '',
             elements: p.elements || [],
             prompt: p.text || '',            // alias para compatibilidade DarkPlanner
@@ -2627,6 +2629,7 @@
                 number: task.number,
                 text: task.prompt || task.text,
                 elements: task.elements || [],
+                duration: task.duration || 8,
                 imageDataUrl: task.imageDataUrl || null,  // v3.4.0: Frame image
                 imageName: task.imageName || null
             });
