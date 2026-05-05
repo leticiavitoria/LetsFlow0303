@@ -483,29 +483,68 @@ async function executePromptInTab(prompt, mediaType) {
         // Step 1c: selecionar duracao do video (4s/6s/8s) — apenas para video/frame
         if (mediaType === "video" || mediaType === "frame") {
             const targetDuration = (prompt.duration === 4 || prompt.duration === 6 || prompt.duration === 8) ? prompt.duration : 8;
+
+            // Garante que o popup do Veo esteja aberto (Step 1a pode ter fechado apos Step 1b)
+            const popupCheck = await chrome.scripting.executeScript({
+                target: { tabId: targetTabId },
+                world: "MAIN",
+                func: () => {
+                    const all = document.querySelectorAll('button, [role="button"], [role="radio"], [role="option"], [role="tab"]');
+                    for (const el of all) {
+                        if (el.offsetParent === null) continue;
+                        const txt = (el.textContent || "").replace(/\s+/g, "").toLowerCase();
+                        if (txt === "4s" || txt === "6s" || txt === "8s") return true;
+                    }
+                    return false;
+                }
+            });
+            const popupOpen = !!popupCheck?.[0]?.result;
+            if (!popupOpen) {
+                console.log("[Dotti] Step 1c: popup fechado, reabrindo...");
+                await chrome.scripting.executeScript({
+                    target: { tabId: targetTabId },
+                    world: "MAIN",
+                    func: () => {
+                        const tb = document.querySelector("[role='textbox']");
+                        if (!tb) return false;
+                        const tbY = tb.getBoundingClientRect().top;
+                        let modeBtn = null;
+                        document.querySelectorAll("button").forEach(b => {
+                            if (b.offsetParent === null) return;
+                            const r = b.getBoundingClientRect();
+                            if (Math.abs(r.top - tbY) < 100 && r.width > 60 && r.width < 200) {
+                                const t = b.textContent.toLowerCase();
+                                if (t.indexOf("crop") >= 0 || t.indexOf("videocam") >= 0 || t.indexOf("movie") >= 0 || t.indexOf("image") >= 0 || t.indexOf("video") >= 0) {
+                                    modeBtn = b;
+                                }
+                            }
+                        });
+                        if (modeBtn) window.__dottiClick(modeBtn);
+                        return !!modeBtn;
+                    }
+                });
+                await sleep(900);
+            }
+
             const durResult = await chrome.scripting.executeScript({
                 target: { tabId: targetTabId },
                 world: "MAIN",
                 func: (durSec) => {
                     const wanted = durSec + "s";
                     const candidates = document.querySelectorAll('button, [role="button"], [role="tab"], [role="option"], [role="radio"]');
+                    const visible = [];
                     let target = null;
                     for (const el of candidates) {
                         if (el.offsetParent === null) continue;
-                        const txt = (el.textContent || "").trim().toLowerCase();
-                        if (txt === wanted) { target = el; break; }
-                    }
-                    if (!target) {
-                        const labels = ["4s", "6s", "8s"];
-                        for (const el of candidates) {
-                            if (el.offsetParent === null) continue;
-                            const txt = (el.textContent || "").trim().toLowerCase();
-                            if (labels.includes(txt) && txt === wanted) { target = el; break; }
+                        const txt = (el.textContent || "").replace(/\s+/g, "").toLowerCase();
+                        if (txt === "4s" || txt === "6s" || txt === "8s") {
+                            visible.push(txt);
+                            if (txt === wanted) target = el;
                         }
                     }
-                    if (!target) return { clicked: false, wanted: wanted };
+                    if (!target) return { clicked: false, wanted: wanted, visible: visible };
                     window.__dottiClick(target);
-                    return { clicked: true, wanted: wanted };
+                    return { clicked: true, wanted: wanted, visible: visible };
                 },
                 args: [targetDuration]
             });
