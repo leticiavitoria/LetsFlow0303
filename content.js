@@ -733,6 +733,28 @@
             }
         }
 
+        // Strategy 0: TRUSTED CLICK via chrome.debugger (bypassa antibot do Veo Flow)
+        // Eventos sinteticos sao isTrusted=false e o Flow rejeita; CDP gera click real.
+        try {
+            // Garante o botao no viewport e calcula centro em coords CSS
+            createBtn.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+            await sleep(200);
+            const r = createBtn.getBoundingClientRect();
+            const x = Math.round(r.left + r.width / 2);
+            const y = Math.round(r.top + r.height / 2);
+            console.log("[Dotti DOM] Tentando TRUSTED click via chrome.debugger em (" + x + "," + y + ")");
+            const tres = await chrome.runtime.sendMessage({ action: "TRUSTED_CLICK", x, y });
+            console.log("[Dotti DOM] TRUSTED click result:", JSON.stringify(tres));
+            await sleep(1200);
+            if (isPromptInputEmpty()) {
+                console.log("[Dotti DOM] Botao criar clicado com sucesso (TRUSTED)");
+                return true;
+            }
+            console.log("[Dotti DOM] TRUSTED click nao limpou, caindo p/ MAIN world...");
+        } catch (e) {
+            console.log("[Dotti DOM] TRUSTED click falhou:", e.message);
+        }
+
         // Strategy 1: MAIN world click via slate-helper.js (React __reactProps onClick)
         console.log("[Dotti DOM] Tentando click via MAIN world (slate-helper)...");
         const clickResult = await requestSlateHelper(

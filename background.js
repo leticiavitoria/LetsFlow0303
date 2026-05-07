@@ -309,6 +309,90 @@ function sleep(ms) {
     return new Promise(r => setTimeout(r, ms));
 }
 
+// ============================================
+// CHROME DEBUGGER — clicks com isTrusted=true (bypass antibot)
+// ============================================
+const _attachedDebuggerTabs = new Set();
+
+async function attachDebugger(tabId) {
+    if (_attachedDebuggerTabs.has(tabId)) return true;
+    try {
+        await new Promise((resolve, reject) => {
+            chrome.debugger.attach({ tabId }, "1.3", () => {
+                if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+                else resolve();
+            });
+        });
+        _attachedDebuggerTabs.add(tabId);
+        console.log("[Dotti Debugger] attached to tab " + tabId);
+        return true;
+    } catch (e) {
+        console.log("[Dotti Debugger] attach falhou:", e.message);
+        return false;
+    }
+}
+
+async function detachDebugger(tabId) {
+    if (!_attachedDebuggerTabs.has(tabId)) return;
+    try {
+        await new Promise((resolve) => {
+            chrome.debugger.detach({ tabId }, () => resolve());
+        });
+        _attachedDebuggerTabs.delete(tabId);
+        console.log("[Dotti Debugger] detached from tab " + tabId);
+    } catch (e) {
+        _attachedDebuggerTabs.delete(tabId);
+    }
+}
+
+function _sendDebuggerCmd(tabId, method, params) {
+    return new Promise((resolve, reject) => {
+        chrome.debugger.sendCommand({ tabId }, method, params, (result) => {
+            if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+            else resolve(result);
+        });
+    });
+}
+
+// Click trusted no centro de (x,y) em coordenadas CSS do viewport
+async function trustedClickAt(tabId, x, y) {
+    const ok = await attachDebugger(tabId);
+    if (!ok) return { success: false, error: "attach_failed" };
+    try {
+        // Move mouse, mousePressed, mouseReleased — sequencia minima necessaria
+        await _sendDebuggerCmd(tabId, "Input.dispatchMouseEvent", {
+            type: "mouseMoved", x, y, button: "none", clickCount: 0
+        });
+        await sleep(20);
+        await _sendDebuggerCmd(tabId, "Input.dispatchMouseEvent", {
+            type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1
+        });
+        await sleep(30);
+        await _sendDebuggerCmd(tabId, "Input.dispatchMouseEvent", {
+            type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1
+        });
+        return { success: true };
+    } catch (e) {
+        console.log("[Dotti Debugger] trustedClickAt erro:", e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+// Limpa attach quando a aba fecha
+chrome.tabs.onRemoved.addListener((tabId) => {
+    if (_attachedDebuggerTabs.has(tabId)) {
+        _attachedDebuggerTabs.delete(tabId);
+    }
+});
+
+// Se o usuario fechar manualmente a barra "DevTools is debugging this tab"
+chrome.debugger.onDetach.addListener((source, reason) => {
+    if (source.tabId) {
+        _attachedDebuggerTabs.delete(source.tabId);
+        console.log("[Dotti Debugger] auto-detach tab " + source.tabId + " reason=" + reason);
+    }
+});
+
 async function waitForCondition(tabId, conditionFn, args, timeout = 10000, interval = 300) {
     const startTime = Date.now();
     while (Date.now() - startTime < timeout) {
@@ -992,6 +1076,8 @@ async function processNextPrompt() {
                 } catch (e) { }
             }
             notifyTab({ action: "QUEUE_COMPLETE", data: { total: totalProcessed } });
+            // Detach debugger ao terminar a fila (remove a barra amarela)
+            if (targetTabId) detachDebugger(targetTabId).catch(() => {});
         }
         return;
     }
@@ -1383,6 +1469,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
                 case "START_QUEUE":
                     sendResponse(await startQueue(message.prompts, message.settings, message.tabId || targetTabId, message.mediaType, message.backgroundMode));
                     break;
+
+                case "TRUSTED_CLICK": {
+                    const tid = sender?.tab?.id || targetTabId;
+                    const r = await trustedClickAt(tid, message.x, message.y);
+                    sendResponse(r);
+                    break;
+                }
+
+                case "DETACH_DEBUGGER": {
+                    const tid = sender?.tab?.id || targetTabId;
+                    await detachDebugger(tid);
+                    sendResponse({ success: true });
+                    break;
+                }
 
                 case "PAUSE_QUEUE":
                     await pauseQueue();
