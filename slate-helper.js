@@ -97,23 +97,50 @@
   document.addEventListener('dotti-click-submit', function(e) {
     var requestId = (e.detail && e.detail.requestId) || '';
 
-    // Find submit button (arrow_forward or send icon)
+    // Find submit button — preferir aria-label, depois icone MAIS PROXIMO do textbox
+    var SUBMIT_ICONS = ['arrow_forward', 'send', 'arrow_upward'];
+    var ARIA_LABELS = ['Create', 'Criar', 'Send', 'Enviar', 'Generate', 'Gerar', 'Submit'];
+    var tb = document.querySelector("[role='textbox']");
+    var tbRect = tb ? tb.getBoundingClientRect() : null;
+    var allBtns = Array.from(document.querySelectorAll('button')).filter(function(b) { return b.offsetParent !== null; });
     var btn = null;
-    var buttons = document.querySelectorAll('button');
-    for (var i = 0; i < buttons.length; i++) {
-      if (buttons[i].offsetParent === null) continue;
-      var icon = buttons[i].querySelector('i');
-      var iconText = icon ? (icon.textContent || '').trim() : '';
-      if (iconText === 'arrow_forward' || iconText === 'send') {
-        btn = buttons[i];
-        break;
+
+    // Estrategia 1: aria-label
+    for (var ai = 0; ai < ARIA_LABELS.length && !btn; ai++) {
+      for (var aj = 0; aj < allBtns.length; aj++) {
+        var al = (allBtns[aj].getAttribute('aria-label') || '').toLowerCase();
+        if (al && (al === ARIA_LABELS[ai].toLowerCase() || al.indexOf(ARIA_LABELS[ai].toLowerCase()) >= 0)) {
+          btn = allBtns[aj];
+          break;
+        }
       }
     }
 
-    // Fallback: aria-label
+    // Estrategia 2: icone arrow_forward/send/arrow_upward mais proximo do textbox
+    if (!btn && tbRect) {
+      var nearest = null;
+      var nearestDist = Infinity;
+      for (var ni = 0; ni < allBtns.length; ni++) {
+        var nic = allBtns[ni].querySelector('i');
+        var nt = nic ? (nic.textContent || '').trim() : '';
+        if (SUBMIT_ICONS.indexOf(nt) < 0) continue;
+        var nr = allBtns[ni].getBoundingClientRect();
+        var ndx = nr.left - tbRect.right;
+        var ndy = nr.top - tbRect.bottom;
+        if (ndx < -100 || ndx > 250 || ndy < -100 || ndy > 250) continue;
+        var nd = Math.abs(ndx) + Math.abs(ndy);
+        if (nd < nearestDist) { nearest = allBtns[ni]; nearestDist = nd; }
+      }
+      if (nearest) btn = nearest;
+    }
+
+    // Estrategia 3: primeiro icone submit visivel (ultimo recurso)
     if (!btn) {
-      btn = document.querySelector('button[aria-label*="Create"], button[aria-label*="Send"], button[aria-label*="Generate"], button[aria-label*="Criar"], button[aria-label*="Enviar"], button[aria-label*="Gerar"]');
-      if (btn && btn.offsetParent === null) btn = null;
+      for (var fi = 0; fi < allBtns.length; fi++) {
+        var fic = allBtns[fi].querySelector('i');
+        var ft = fic ? (fic.textContent || '').trim() : '';
+        if (SUBMIT_ICONS.indexOf(ft) >= 0) { btn = allBtns[fi]; break; }
+      }
     }
 
     if (!btn) {
@@ -534,12 +561,13 @@
     var setX1 = !!(e.detail && e.detail.setX1);
     var duration = (e.detail && e.detail.duration) || null;   // 4 | 6 | 8
 
-    // Build list of icons to click
+    // Build list of icons to click. Cada entrada eh uma lista de alternativas
+    // (Flow renomeou videocam -> play_circle em maio/2026).
     var targets = [];
-    if (mediaType === 'image') targets.push('image');
-    else if (mediaType === 'video') targets.push('videocam');
-    if (subMode === 'ingredients') targets.push('chrome_extension');
-    else if (subMode === 'frames') targets.push('crop_free');
+    if (mediaType === 'image') targets.push(['image']);
+    else if (mediaType === 'video') targets.push(['videocam', 'play_circle']);
+    if (subMode === 'ingredients') targets.push(['chrome_extension']);
+    else if (subMode === 'frames') targets.push(['crop_free']);
 
     if (targets.length === 0 && !setX1) {
       _dispatch('dotti-switch-mode-result', { requestId: requestId, result: 'NO_TARGETS' });
@@ -586,23 +614,27 @@
       var allAlreadyActive = true;
 
       for (var t = 0; t < targets.length; t++) {
-        var targetIcon = targets[t];
+        var targetAlts = targets[t]; // array de alternativas (ex: ['videocam','play_circle'])
+        var targetIcon = targetAlts[0];
         var targetBtn = null;
         var fallbackBtn = null;
+        var matchedIcon = null;
         // Preferir botoes do popup (data-state active/inactive). Outros videocam/image
         // que aparecem em sidebar/galeria usam outros estados (closed) e devem ser ignorados.
         for (var j = 0; j < refreshedBtns.length; j++) {
           var ic = refreshedBtns[j].querySelector('i');
-          if (ic && ic.textContent.trim() === targetIcon) {
-            var st = refreshedBtns[j].getAttribute('data-state');
-            if (st === 'active' || st === 'inactive') { targetBtn = refreshedBtns[j]; break; }
-            if (!fallbackBtn) fallbackBtn = refreshedBtns[j];
-          }
+          if (!ic) continue;
+          var icText = ic.textContent.trim();
+          if (targetAlts.indexOf(icText) < 0) continue;
+          var st = refreshedBtns[j].getAttribute('data-state');
+          if (st === 'active' || st === 'inactive') { targetBtn = refreshedBtns[j]; matchedIcon = icText; break; }
+          if (!fallbackBtn) { fallbackBtn = refreshedBtns[j]; matchedIcon = icText; }
         }
         if (!targetBtn) targetBtn = fallbackBtn;
+        if (matchedIcon) targetIcon = matchedIcon;
 
         if (!targetBtn) {
-          clickResults.push({ icon: targetIcon, action: 'not_found' });
+          clickResults.push({ icon: targetAlts.join('|'), action: 'not_found' });
           allAlreadyActive = false;
           continue;
         }

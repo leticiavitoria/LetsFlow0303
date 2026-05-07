@@ -661,18 +661,48 @@
 
     // v3.1.0: Encontrar botao submit do Flow
     function findSubmitButton() {
-        const buttons = document.querySelectorAll("button");
-        for (const btn of buttons) {
-            if (btn.offsetParent === null) continue;
-            const icon = btn.querySelector("i");
-            const iconText = icon?.textContent?.trim();
-            if (iconText === "arrow_forward" || iconText === "send") {
-                return btn;
-            }
+        const SUBMIT_ICONS = ["arrow_forward", "send", "arrow_upward"];
+        const tb = document.querySelector("[role='textbox']");
+        const tbRect = tb ? tb.getBoundingClientRect() : null;
+        const buttons = Array.from(document.querySelectorAll("button")).filter(b => b.offsetParent !== null);
+
+        // Estrategia 1: aria-label especifico
+        const ariaLabels = ["Create", "Criar", "Send", "Enviar", "Generate", "Gerar", "Submit"];
+        for (const lab of ariaLabels) {
+            const b = buttons.find(b => {
+                const al = b.getAttribute("aria-label") || "";
+                return al === lab || al.toLowerCase().includes(lab.toLowerCase());
+            });
+            if (b) return b;
         }
-        // Fallback: aria-label
-        const ariaBtn = document.querySelector('button[aria-label*="Create"], button[aria-label*="Criar"], button[aria-label*="Send"], button[aria-label*="Generate"], button[aria-label*="Gerar"]');
-        if (ariaBtn && ariaBtn.offsetParent !== null) return ariaBtn;
+
+        // Estrategia 2: icone arrow_forward/send/arrow_upward MAIS PROXIMO do textbox
+        // (evita pegar arrow_forward do header ou de popups)
+        if (tbRect) {
+            let nearest = null;
+            let nearestDist = Infinity;
+            for (const b of buttons) {
+                const ic = b.querySelector("i");
+                const t = ic?.textContent?.trim();
+                if (!SUBMIT_ICONS.includes(t)) continue;
+                const r = b.getBoundingClientRect();
+                // submit fica perto da borda direita/inferior do textbox
+                const dx = r.left - tbRect.right;
+                const dy = r.top - tbRect.bottom;
+                if (dx < -100 || dx > 250 || dy < -100 || dy > 250) continue;
+                const d = Math.abs(dx) + Math.abs(dy);
+                if (d < nearestDist) { nearest = b; nearestDist = d; }
+            }
+            if (nearest) return nearest;
+        }
+
+        // Estrategia 3 (ultimo recurso): primeiro arrow_forward/send/arrow_upward visivel
+        for (const b of buttons) {
+            const ic = b.querySelector("i");
+            const t = ic?.textContent?.trim();
+            if (SUBMIT_ICONS.includes(t)) return b;
+        }
+
         // Fallback: findElementRobust
         return findElementRobust({
             materialIcon: 'arrow_forward',
@@ -757,8 +787,13 @@
             await sleep(500);
         }
 
-        console.log("[Dotti DOM] Botao criar clicado (todas strategies tentadas)");
-        return true;
+        // Verificar honestamente se alguma strategy de fato submeteu
+        if (isPromptInputEmpty()) {
+            console.log("[Dotti DOM] Botao criar clicado com sucesso (Enter key)");
+            return true;
+        }
+        console.log("[Dotti DOM] FALHA: nenhuma strategy conseguiu submeter o prompt");
+        return false;
     }
 
     // ============================================
