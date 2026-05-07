@@ -102,8 +102,27 @@
     var ARIA_LABELS = ['Create', 'Criar', 'Send', 'Enviar', 'Generate', 'Gerar', 'Submit'];
     var tb = document.querySelector("[role='textbox']");
     var tbRect = tb ? tb.getBoundingClientRect() : null;
-    var allBtns = Array.from(document.querySelectorAll('button')).filter(function(b) { return b.offsetParent !== null; });
+    // v3.6.0: Inclui [role="button"] (Flow pode ter trocado <button> por div role=button)
+    var allBtns = Array.from(document.querySelectorAll('button, [role="button"]')).filter(function(b) { return b.offsetParent !== null; });
     var btn = null;
+    var pickReason = null;
+
+    // Diagnostico: lista candidatos com icone de submit
+    var submitCandidates = [];
+    for (var di = 0; di < allBtns.length; di++) {
+      var dic = allBtns[di].querySelector('i');
+      var dt = dic ? (dic.textContent || '').trim() : '';
+      var dal = allBtns[di].getAttribute('aria-label') || '';
+      if (SUBMIT_ICONS.indexOf(dt) >= 0 || dal) {
+        var dr = allBtns[di].getBoundingClientRect();
+        var dxRel = tbRect ? Math.round(dr.left - tbRect.right) : null;
+        var dyRel = tbRect ? Math.round(dr.top - tbRect.bottom) : null;
+        if (SUBMIT_ICONS.indexOf(dt) >= 0) {
+          submitCandidates.push({ icon: dt, aria: dal, dx: dxRel, dy: dyRel, disabled: !!allBtns[di].disabled });
+        }
+      }
+    }
+    console.log('[DottiSlateHelper] Submit candidates:', JSON.stringify(submitCandidates));
 
     // Estrategia 1: aria-label
     for (var ai = 0; ai < ARIA_LABELS.length && !btn; ai++) {
@@ -111,6 +130,7 @@
         var al = (allBtns[aj].getAttribute('aria-label') || '').toLowerCase();
         if (al && (al === ARIA_LABELS[ai].toLowerCase() || al.indexOf(ARIA_LABELS[ai].toLowerCase()) >= 0)) {
           btn = allBtns[aj];
+          pickReason = 'aria-label=' + al;
           break;
         }
       }
@@ -131,7 +151,7 @@
         var nd = Math.abs(ndx) + Math.abs(ndy);
         if (nd < nearestDist) { nearest = allBtns[ni]; nearestDist = nd; }
       }
-      if (nearest) btn = nearest;
+      if (nearest) { btn = nearest; pickReason = 'nearest-to-textbox'; }
     }
 
     // Estrategia 3: primeiro icone submit visivel (ultimo recurso)
@@ -139,14 +159,22 @@
       for (var fi = 0; fi < allBtns.length; fi++) {
         var fic = allBtns[fi].querySelector('i');
         var ft = fic ? (fic.textContent || '').trim() : '';
-        if (SUBMIT_ICONS.indexOf(ft) >= 0) { btn = allBtns[fi]; break; }
+        if (SUBMIT_ICONS.indexOf(ft) >= 0) { btn = allBtns[fi]; pickReason = 'fallback-first-icon'; break; }
       }
     }
 
     if (!btn) {
+      console.log('[DottiSlateHelper] Submit: NO_BUTTON encontrado');
       _dispatch('dotti-click-submit-result', { requestId: requestId, result: 'NO_BUTTON' });
       return;
     }
+
+    var pickedIcon = (btn.querySelector('i')?.textContent || '').trim();
+    var pickedAria = btn.getAttribute('aria-label') || '';
+    var pickedRect = btn.getBoundingClientRect();
+    var pickedDx = tbRect ? Math.round(pickedRect.left - tbRect.right) : null;
+    var pickedDy = tbRect ? Math.round(pickedRect.top - tbRect.bottom) : null;
+    console.log('[DottiSlateHelper] Submit pick:', pickReason, 'icon=' + pickedIcon, 'aria=' + pickedAria, 'dx=' + pickedDx, 'dy=' + pickedDy, 'disabled=' + !!btn.disabled);
 
     if (btn.disabled) {
       _dispatch('dotti-click-submit-result', { requestId: requestId, result: 'DISABLED' });
@@ -155,8 +183,10 @@
 
     // Strategy 1: React onClick directly from MAIN world (most reliable)
     var clicked = false;
+    var hadReactProps = false;
     var reactPropsKey = Object.keys(btn).find(function(k) { return k.startsWith('__reactProps$'); });
     if (reactPropsKey && btn[reactPropsKey] && typeof btn[reactPropsKey].onClick === 'function') {
+      hadReactProps = true;
       try {
         btn[reactPropsKey].onClick({
           preventDefault: function(){},
@@ -167,8 +197,8 @@
           currentTarget: btn
         });
         clicked = true;
-      } catch(e) {
-        // React click failed, will try fallback
+      } catch(err) {
+        console.log('[DottiSlateHelper] React onClick threw:', err && err.message);
       }
     }
 
@@ -183,6 +213,7 @@
       clicked = true;
     }
 
+    console.log('[DottiSlateHelper] Submit click done. hadReactProps=' + hadReactProps + ' via=' + (hadReactProps ? 'react' : '7-event'));
     _dispatch('dotti-click-submit-result', { requestId: requestId, result: clicked ? 'OK' : 'CLICK_FAILED' });
   });
 
